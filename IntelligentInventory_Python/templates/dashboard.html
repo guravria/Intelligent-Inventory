@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Inventory | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="min-h-screen p-4 md:p-10">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+            <div>
+                <h1 class="text-6xl font-black text-white tracking-tighter uppercase mb-2">
+                    Inventory <span class="text-blue-500">Dashboard</span>
+                </h1>
+                <p class="text-slate-400 mt-1 text-lg">Logged in as: <span class="text-blue-400 font-bold">{{ current_user.username }}</span></p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="toggleBot()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full font-bold transition shadow-lg shadow-blue-500/30">
+                    🤖 AI Assistant
+                </button>
+                <a href="/logout" class="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-2 rounded-full hover:bg-red-500/20 transition">
+                    Logout
+                </a>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 text-center">
+            <div class="glass-card p-6 border-b-4 border-blue-500">
+                <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Products</p>
+                <h2 class="text-6xl font-black mt-2 total-count-digit block">{{ products|length }}</h2>
+            </div>
+            <div class="glass-card p-6 border-b-4 border-red-500">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest text-red-400">Low Stock</p>
+                <h2 class="text-5xl font-black mt-2 text-red-400">{{ low_stock_count }}</h2>
+            </div>
+            <div class="glass-card p-6 border-b-4 border-yellow-500">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest text-yellow-500">Expired</p>
+                <h2 class="text-5xl font-black mt-2 text-yellow-500">{{ expired_count }}</h2>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <input type="text" id="searchInput" onkeyup="searchInventory()" 
+                   placeholder="🔍 Search product names or barcodes..." 
+                   class="flex-1 bg-slate-900/80 border-2 border-slate-700 rounded-2xl px-6 py-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+            <div class="flex gap-3">
+                <a href="/add" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black transition shadow-xl shadow-blue-600/20">
+                    + Add Product
+                </a>
+                <a href="/start_scanner" class="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black transition shadow-xl shadow-emerald-600/20">
+                    📷 AI Scanner
+                </a>
+            </div>
+        </div>
+
+        <div id="product-list" class="space-y-5">
+            {% for product in products %}
+            <div class="card glass-card p-8 flex flex-col md:flex-row justify-between items-center gap-6 
+                {% if product.quantity < 5 %} border-red-500 border-2 {% else %} border-blue-500 border-2 {% endif %}">
+                
+                <div class="flex flex-col flex-1 w-full text-left">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <h3 class="text-4xl font-black product-title uppercase tracking-tighter">{{ product.name }}</h3>
+                        
+                        {% if product.quantity < 5 %}
+                            <span class="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg shadow-red-600/20">RESTOCK</span>
+                        {% endif %}
+
+                        <script>
+                            (function() {
+                                var expiryDate = "{{ product.expiry_date }}";
+                                var today = new Date().toISOString().split('T')[0];
+                                if (expiryDate <= today && expiryDate !== 'None' && expiryDate !== '') {
+                                    document.write('<span class="bg-yellow-500 text-black text-[10px] font-black px-2 py-1 rounded-md shadow-lg shadow-yellow-500/20">EXPIRED</span>');
+                                }
+                            })();
+                        </script>
+                    </div>
+                    
+                    <p class="text-slate-500 font-mono text-sm mt-3 tracking-tighter uppercase">Barcode: <span class="text-blue-500 font-bold">{{ product.barcode }}</span></p>
+                    
+                    <div class="flex gap-8 mt-4">
+                        <span class="text-slate-500 text-sm font-semibold italic">📅 {{ product.expiry_date }}</span>
+                        <span class="text-emerald-600 text-sm font-bold underline">₹{{ product.price }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col items-end gap-3">
+                     <div class="text-5xl font-black {% if product.quantity < 5 %}text-red-600{% else %}text-emerald-600{% endif %}">
+                        {{ product.quantity }} <span class="text-sm font-normal text-slate-400 uppercase tracking-widest">Units</span>
+                    </div>
+                    <div class="flex gap-6 uppercase text-xs font-black tracking-widest">
+                        <a href="/edit/{{ product.id }}" class="text-blue-500 hover:text-blue-700 transition">Edit Details</a>
+                        <a href="/delete/{{ product.id }}" onclick="return confirm('Delete?')" class="text-red-500 hover:text-red-700 transition">Remove</a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-24 bg-slate-900/40 rounded-3xl border-2 border-dashed border-slate-700">
+                <p class="text-slate-500 text-xl italic font-bold">Your inventory is currently empty.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="bot-message" class="hidden fixed bottom-10 right-10 w-96 ai-notification-box p-8 rounded-[2rem] z-[9999]">
+        <div class="flex justify-between items-center mb-4 text-left">
+            <h4 class="text-blue-400 font-black text-xl flex items-center gap-2 uppercase tracking-widest">
+                <span>🤖</span> AI REPORT
+            </h4>
+            <button onclick="toggleBot()" class="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
+        </div>
+        <p id="bot-text" class="leading-relaxed text-left"></p>
+    </div>
+
+    <script>
+        function toggleBot() {
+            const box = document.getElementById("bot-message");
+            const text = document.getElementById("bot-text");
+            if (box.classList.contains("hidden")) {
+                box.classList.remove("hidden");
+                const msg = "I have analyzed your inventory. You have **{{ low_stock_count }} items** low on stock and **{{ expired_count }} items** currently expired. Overall inventory health is currently monitored.";
+                
+                // Formats bold text to be blue inside the box
+                text.innerHTML = msg.replace(/\*\*(.*?)\*\*/g, '<b class="text-blue-400">$1</b>');
+                
+                // Trigger Voice Synthesis
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    var speech = new SpeechSynthesisUtterance(msg.replace(/\*\*/g, ""));
+                    speech.rate = 0.95;
+                    window.speechSynthesis.speak(speech);
+                }
+            } else {
+                box.classList.add("hidden");
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function searchInventory() {
+            let filter = document.getElementById('searchInput').value.toLowerCase();
+            let cards = document.getElementsByClassName('card');
+            for (let card of cards) {
+                card.style.display = card.textContent.toLowerCase().includes(filter) ? "flex" : "none";
+            }
+        }
+    </script>
+</body>
+</html>
